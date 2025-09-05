@@ -95,6 +95,66 @@ export const orderItems = pgTable("order_items", {
   digitalKeyId: varchar("digital_key_id"),
 });
 
+export const refunds = pgTable("refunds", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  reason: text("reason").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, approved, rejected, processed
+  adminNotes: text("admin_notes"),
+  stripeRefundId: varchar("stripe_refund_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  orderId: varchar("order_id"),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  status: varchar("status", { length: 50 }).default("open"), // open, in_progress, resolved, closed
+  priority: varchar("priority", { length: 20 }).default("medium"), // low, medium, high, urgent
+  category: varchar("category", { length: 100 }).notNull(), // order_issue, technical_support, refund_request, general
+  assignedTo: varchar("assigned_to"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const ticketMessages = pgTable("ticket_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticketId: varchar("ticket_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  message: text("message").notNull(),
+  isInternal: boolean("is_internal").default(false), // for admin-only notes
+  attachments: text("attachments").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const disputes = pgTable("disputes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // chargeback, fraud, product_issue, delivery_issue
+  description: text("description").notNull(),
+  status: varchar("status", { length: 50 }).default("open"), // open, investigating, resolved, closed
+  resolution: text("resolution"),
+  evidence: text("evidence").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const inventoryAlerts = pgTable("inventory_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull(),
+  alertType: varchar("alert_type", { length: 50 }).notNull(), // low_stock, out_of_stock, no_keys
+  threshold: integer("threshold"), // stock level that triggered alert
+  isResolved: boolean("is_resolved").default(false),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const categoriesRelations = relations(categories, ({ many }) => ({
   products: many(products),
@@ -144,6 +204,62 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   }),
 }));
 
+export const refundsRelations = relations(refunds, ({ one }) => ({
+  order: one(orders, {
+    fields: [refunds.orderId],
+    references: [orders.id],
+  }),
+  user: one(users, {
+    fields: [refunds.userId],
+    references: [users.id],
+  }),
+}));
+
+export const supportTicketsRelations = relations(supportTickets, ({ one, many }) => ({
+  user: one(users, {
+    fields: [supportTickets.userId],
+    references: [users.id],
+  }),
+  order: one(orders, {
+    fields: [supportTickets.orderId],
+    references: [orders.id],
+  }),
+  assignedUser: one(users, {
+    fields: [supportTickets.assignedTo],
+    references: [users.id],
+  }),
+  messages: many(ticketMessages),
+}));
+
+export const ticketMessagesRelations = relations(ticketMessages, ({ one }) => ({
+  ticket: one(supportTickets, {
+    fields: [ticketMessages.ticketId],
+    references: [supportTickets.id],
+  }),
+  user: one(users, {
+    fields: [ticketMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const disputesRelations = relations(disputes, ({ one }) => ({
+  order: one(orders, {
+    fields: [disputes.orderId],
+    references: [orders.id],
+  }),
+  user: one(users, {
+    fields: [disputes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const inventoryAlertsRelations = relations(inventoryAlerts, ({ one }) => ({
+  product: one(products, {
+    fields: [inventoryAlerts.productId],
+    references: [products.id],
+  }),
+}));
+
 // Insert schemas
 export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
@@ -172,6 +288,35 @@ export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
   id: true,
 });
 
+export const insertRefundSchema = createInsertSchema(refunds).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTicketMessageSchema = createInsertSchema(ticketMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDisputeSchema = createInsertSchema(disputes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInventoryAlertSchema = createInsertSchema(inventoryAlerts).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -185,6 +330,16 @@ export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
+export type Refund = typeof refunds.$inferSelect;
+export type InsertRefund = z.infer<typeof insertRefundSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type TicketMessage = typeof ticketMessages.$inferSelect;
+export type InsertTicketMessage = z.infer<typeof insertTicketMessageSchema>;
+export type Dispute = typeof disputes.$inferSelect;
+export type InsertDispute = z.infer<typeof insertDisputeSchema>;
+export type InventoryAlert = typeof inventoryAlerts.$inferSelect;
+export type InsertInventoryAlert = z.infer<typeof insertInventoryAlertSchema>;
 
 // Extended types with relations
 export type ProductWithCategory = Product & {
@@ -193,4 +348,25 @@ export type ProductWithCategory = Product & {
 
 export type OrderWithItems = Order & {
   orderItems: (OrderItem & { product: Product; digitalKey?: DigitalKey })[];
+};
+
+export type SupportTicketWithMessages = SupportTicket & {
+  messages: (TicketMessage & { user: User })[];
+  user: User;
+  order?: Order;
+  assignedUser?: User;
+};
+
+export type RefundWithOrder = Refund & {
+  order: OrderWithItems;
+  user: User;
+};
+
+export type DisputeWithOrder = Dispute & {
+  order: OrderWithItems;
+  user: User;
+};
+
+export type InventoryAlertWithProduct = InventoryAlert & {
+  product: ProductWithCategory;
 };

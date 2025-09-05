@@ -5,6 +5,11 @@ import {
   digitalKeys,
   orders,
   orderItems,
+  refunds,
+  supportTickets,
+  ticketMessages,
+  disputes,
+  inventoryAlerts,
   type User,
   type UpsertUser,
   type Category,
@@ -19,6 +24,20 @@ import {
   type OrderItem,
   type InsertOrderItem,
   type OrderWithItems,
+  type Refund,
+  type InsertRefund,
+  type RefundWithOrder,
+  type SupportTicket,
+  type InsertSupportTicket,
+  type SupportTicketWithMessages,
+  type TicketMessage,
+  type InsertTicketMessage,
+  type Dispute,
+  type InsertDispute,
+  type DisputeWithOrder,
+  type InventoryAlert,
+  type InsertInventoryAlert,
+  type InventoryAlertWithProduct,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, isNull, isNotNull, sql } from "drizzle-orm";
@@ -55,6 +74,38 @@ export interface IStorage {
   getUserOrders(userId: string): Promise<OrderWithItems[]>;
   getUserStats(userId: string): Promise<{ totalOrders: number; totalSpent: string; totalKeys: number }>;
   getOrderByPaymentIntent(paymentIntentId: string): Promise<Order | undefined>;
+  
+  // Refund operations
+  createRefund(refund: InsertRefund): Promise<Refund>;
+  getRefundById(id: string): Promise<RefundWithOrder | undefined>;
+  getUserRefunds(userId: string): Promise<RefundWithOrder[]>;
+  getAllRefunds(): Promise<RefundWithOrder[]>;
+  updateRefundStatus(id: string, status: string, adminNotes?: string, stripeRefundId?: string): Promise<Refund>;
+  
+  // Support ticket operations
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  getSupportTicketById(id: string): Promise<SupportTicketWithMessages | undefined>;
+  getUserTickets(userId: string): Promise<SupportTicket[]>;
+  getAllTickets(): Promise<SupportTicketWithMessages[]>;
+  updateTicketStatus(id: string, status: string): Promise<SupportTicket>;
+  assignTicket(id: string, assignedTo: string): Promise<SupportTicket>;
+  
+  // Ticket message operations
+  createTicketMessage(message: InsertTicketMessage): Promise<TicketMessage>;
+  getTicketMessages(ticketId: string): Promise<(TicketMessage & { user: User })[]>;
+  
+  // Dispute operations
+  createDispute(dispute: InsertDispute): Promise<Dispute>;
+  getDisputeById(id: string): Promise<DisputeWithOrder | undefined>;
+  getUserDisputes(userId: string): Promise<DisputeWithOrder[]>;
+  getAllDisputes(): Promise<DisputeWithOrder[]>;
+  updateDisputeStatus(id: string, status: string, resolution?: string): Promise<Dispute>;
+  
+  // Inventory alert operations
+  createInventoryAlert(alert: InsertInventoryAlert): Promise<InventoryAlert>;
+  getInventoryAlerts(): Promise<InventoryAlertWithProduct[]>;
+  resolveInventoryAlert(id: string): Promise<InventoryAlert>;
+  checkLowStockProducts(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -299,6 +350,373 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(eq(orders.paymentIntentId, paymentIntentId));
     return order;
+  }
+
+  // Refund operations
+  async createRefund(refund: InsertRefund): Promise<Refund> {
+    const [newRefund] = await db.insert(refunds).values(refund).returning();
+    return newRefund;
+  }
+
+  async getRefundById(id: string): Promise<RefundWithOrder | undefined> {
+    const [refund] = await db
+      .select()
+      .from(refunds)
+      .leftJoin(orders, eq(refunds.orderId, orders.id))
+      .leftJoin(users, eq(refunds.userId, users.id))
+      .where(eq(refunds.id, id));
+    
+    if (!refund) return undefined;
+    
+    const orderWithItems = await this.getOrderById(refund.refunds.orderId);
+    return {
+      ...refund.refunds,
+      order: orderWithItems!,
+      user: refund.users!,
+    };
+  }
+
+  async getUserRefunds(userId: string): Promise<RefundWithOrder[]> {
+    const userRefunds = await db
+      .select()
+      .from(refunds)
+      .leftJoin(orders, eq(refunds.orderId, orders.id))
+      .leftJoin(users, eq(refunds.userId, users.id))
+      .where(eq(refunds.userId, userId))
+      .orderBy(desc(refunds.createdAt));
+
+    const refundsWithOrders = await Promise.all(
+      userRefunds.map(async (refund) => {
+        const orderWithItems = await this.getOrderById(refund.refunds.orderId);
+        return {
+          ...refund.refunds,
+          order: orderWithItems!,
+          user: refund.users!,
+        };
+      })
+    );
+
+    return refundsWithOrders;
+  }
+
+  async getAllRefunds(): Promise<RefundWithOrder[]> {
+    const allRefunds = await db
+      .select()
+      .from(refunds)
+      .leftJoin(orders, eq(refunds.orderId, orders.id))
+      .leftJoin(users, eq(refunds.userId, users.id))
+      .orderBy(desc(refunds.createdAt));
+
+    const refundsWithOrders = await Promise.all(
+      allRefunds.map(async (refund) => {
+        const orderWithItems = await this.getOrderById(refund.refunds.orderId);
+        return {
+          ...refund.refunds,
+          order: orderWithItems!,
+          user: refund.users!,
+        };
+      })
+    );
+
+    return refundsWithOrders;
+  }
+
+  async updateRefundStatus(id: string, status: string, adminNotes?: string, stripeRefundId?: string): Promise<Refund> {
+    const [updatedRefund] = await db
+      .update(refunds)
+      .set({ 
+        status, 
+        adminNotes,
+        stripeRefundId,
+        updatedAt: new Date() 
+      })
+      .where(eq(refunds.id, id))
+      .returning();
+    return updatedRefund;
+  }
+
+  // Support ticket operations
+  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
+    const [newTicket] = await db.insert(supportTickets).values(ticket).returning();
+    return newTicket;
+  }
+
+  async getSupportTicketById(id: string): Promise<SupportTicketWithMessages | undefined> {
+    const [ticket] = await db
+      .select()
+      .from(supportTickets)
+      .leftJoin(users, eq(supportTickets.userId, users.id))
+      .leftJoin(orders, eq(supportTickets.orderId, orders.id))
+      .where(eq(supportTickets.id, id));
+    
+    if (!ticket) return undefined;
+    
+    const messages = await this.getTicketMessages(id);
+    const assignedUser = ticket.support_tickets.assignedTo ? await this.getUser(ticket.support_tickets.assignedTo) : undefined;
+    
+    return {
+      ...ticket.support_tickets,
+      messages,
+      user: ticket.users!,
+      order: ticket.orders || undefined,
+      assignedUser,
+    };
+  }
+
+  async getUserTickets(userId: string): Promise<SupportTicket[]> {
+    return await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.userId, userId))
+      .orderBy(desc(supportTickets.createdAt));
+  }
+
+  async getAllTickets(): Promise<SupportTicketWithMessages[]> {
+    const allTickets = await db
+      .select()
+      .from(supportTickets)
+      .leftJoin(users, eq(supportTickets.userId, users.id))
+      .leftJoin(orders, eq(supportTickets.orderId, orders.id))
+      .orderBy(desc(supportTickets.createdAt));
+
+    const ticketsWithMessages = await Promise.all(
+      allTickets.map(async (ticket) => {
+        const messages = await this.getTicketMessages(ticket.support_tickets.id);
+        const assignedUser = ticket.support_tickets.assignedTo ? await this.getUser(ticket.support_tickets.assignedTo) : undefined;
+        
+        return {
+          ...ticket.support_tickets,
+          messages,
+          user: ticket.users!,
+          order: ticket.orders || undefined,
+          assignedUser,
+        };
+      })
+    );
+
+    return ticketsWithMessages;
+  }
+
+  async updateTicketStatus(id: string, status: string): Promise<SupportTicket> {
+    const [updatedTicket] = await db
+      .update(supportTickets)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(supportTickets.id, id))
+      .returning();
+    return updatedTicket;
+  }
+
+  async assignTicket(id: string, assignedTo: string): Promise<SupportTicket> {
+    const [updatedTicket] = await db
+      .update(supportTickets)
+      .set({ assignedTo, updatedAt: new Date() })
+      .where(eq(supportTickets.id, id))
+      .returning();
+    return updatedTicket;
+  }
+
+  // Ticket message operations
+  async createTicketMessage(message: InsertTicketMessage): Promise<TicketMessage> {
+    const [newMessage] = await db.insert(ticketMessages).values(message).returning();
+    return newMessage;
+  }
+
+  async getTicketMessages(ticketId: string): Promise<(TicketMessage & { user: User })[]> {
+    const messages = await db
+      .select()
+      .from(ticketMessages)
+      .leftJoin(users, eq(ticketMessages.userId, users.id))
+      .where(eq(ticketMessages.ticketId, ticketId))
+      .orderBy(ticketMessages.createdAt);
+
+    return messages.map(message => ({
+      ...message.ticket_messages,
+      user: message.users!,
+    }));
+  }
+
+  // Dispute operations
+  async createDispute(dispute: InsertDispute): Promise<Dispute> {
+    const [newDispute] = await db.insert(disputes).values(dispute).returning();
+    return newDispute;
+  }
+
+  async getDisputeById(id: string): Promise<DisputeWithOrder | undefined> {
+    const [dispute] = await db
+      .select()
+      .from(disputes)
+      .leftJoin(orders, eq(disputes.orderId, orders.id))
+      .leftJoin(users, eq(disputes.userId, users.id))
+      .where(eq(disputes.id, id));
+    
+    if (!dispute) return undefined;
+    
+    const orderWithItems = await this.getOrderById(dispute.disputes.orderId);
+    return {
+      ...dispute.disputes,
+      order: orderWithItems!,
+      user: dispute.users!,
+    };
+  }
+
+  async getUserDisputes(userId: string): Promise<DisputeWithOrder[]> {
+    const userDisputes = await db
+      .select()
+      .from(disputes)
+      .leftJoin(orders, eq(disputes.orderId, orders.id))
+      .leftJoin(users, eq(disputes.userId, users.id))
+      .where(eq(disputes.userId, userId))
+      .orderBy(desc(disputes.createdAt));
+
+    const disputesWithOrders = await Promise.all(
+      userDisputes.map(async (dispute) => {
+        const orderWithItems = await this.getOrderById(dispute.disputes.orderId);
+        return {
+          ...dispute.disputes,
+          order: orderWithItems!,
+          user: dispute.users!,
+        };
+      })
+    );
+
+    return disputesWithOrders;
+  }
+
+  async getAllDisputes(): Promise<DisputeWithOrder[]> {
+    const allDisputes = await db
+      .select()
+      .from(disputes)
+      .leftJoin(orders, eq(disputes.orderId, orders.id))
+      .leftJoin(users, eq(disputes.userId, users.id))
+      .orderBy(desc(disputes.createdAt));
+
+    const disputesWithOrders = await Promise.all(
+      allDisputes.map(async (dispute) => {
+        const orderWithItems = await this.getOrderById(dispute.disputes.orderId);
+        return {
+          ...dispute.disputes,
+          order: orderWithItems!,
+          user: dispute.users!,
+        };
+      })
+    );
+
+    return disputesWithOrders;
+  }
+
+  async updateDisputeStatus(id: string, status: string, resolution?: string): Promise<Dispute> {
+    const [updatedDispute] = await db
+      .update(disputes)
+      .set({ 
+        status, 
+        resolution,
+        updatedAt: new Date() 
+      })
+      .where(eq(disputes.id, id))
+      .returning();
+    return updatedDispute;
+  }
+
+  // Inventory alert operations
+  async createInventoryAlert(alert: InsertInventoryAlert): Promise<InventoryAlert> {
+    const [newAlert] = await db.insert(inventoryAlerts).values(alert).returning();
+    return newAlert;
+  }
+
+  async getInventoryAlerts(): Promise<InventoryAlertWithProduct[]> {
+    const alerts = await db
+      .select()
+      .from(inventoryAlerts)
+      .leftJoin(products, eq(inventoryAlerts.productId, products.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(eq(inventoryAlerts.isResolved, false))
+      .orderBy(desc(inventoryAlerts.createdAt));
+
+    return alerts.map(alert => ({
+      ...alert.inventory_alerts,
+      product: {
+        ...alert.products!,
+        category: alert.categories!,
+      },
+    }));
+  }
+
+  async resolveInventoryAlert(id: string): Promise<InventoryAlert> {
+    const [updatedAlert] = await db
+      .update(inventoryAlerts)
+      .set({ isResolved: true, resolvedAt: new Date() })
+      .where(eq(inventoryAlerts.id, id))
+      .returning();
+    return updatedAlert;
+  }
+
+  async checkLowStockProducts(): Promise<void> {
+    // Check for products with low stock (less than 5)
+    const lowStockProducts = await db
+      .select()
+      .from(products)
+      .where(and(
+        eq(products.isActive, true),
+        sql`${products.stock} < 5 AND ${products.stock} > 0`
+      ));
+
+    // Check for products with no digital keys
+    const productsWithNoKeys = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        stock: products.stock,
+      })
+      .from(products)
+      .leftJoin(digitalKeys, and(
+        eq(digitalKeys.productId, products.id),
+        eq(digitalKeys.isUsed, false)
+      ))
+      .where(and(
+        eq(products.isActive, true),
+        isNull(digitalKeys.id)
+      ))
+      .groupBy(products.id);
+
+    // Create alerts for low stock products
+    for (const product of lowStockProducts) {
+      // Check if alert already exists for this product
+      const existingAlert = await db
+        .select()
+        .from(inventoryAlerts)
+        .where(and(
+          eq(inventoryAlerts.productId, product.id),
+          eq(inventoryAlerts.alertType, 'low_stock'),
+          eq(inventoryAlerts.isResolved, false)
+        ));
+
+      if (existingAlert.length === 0) {
+        await this.createInventoryAlert({
+          productId: product.id,
+          alertType: 'low_stock',
+          threshold: product.stock || 0,
+        });
+      }
+    }
+
+    // Create alerts for products with no keys
+    for (const product of productsWithNoKeys) {
+      const existingAlert = await db
+        .select()
+        .from(inventoryAlerts)
+        .where(and(
+          eq(inventoryAlerts.productId, product.id),
+          eq(inventoryAlerts.alertType, 'no_keys'),
+          eq(inventoryAlerts.isResolved, false)
+        ));
+
+      if (existingAlert.length === 0) {
+        await this.createInventoryAlert({
+          productId: product.id,
+          alertType: 'no_keys',
+        });
+      }
+    }
   }
 }
 

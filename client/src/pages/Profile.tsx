@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CustomerService } from "@/components/CustomerService";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { 
   User, 
@@ -118,76 +119,14 @@ export default function Profile() {
         <p className="text-muted-foreground">Manage your account and view your orders</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Profile Information */}
-        <div className="lg:col-span-1">
-          <Card data-testid="card-profile-info">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Account Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-4">
-                {user.profileImageUrl ? (
-                  <img
-                    src={user.profileImageUrl}
-                    alt="Profile"
-                    className="w-16 h-16 rounded-full object-cover"
-                    data-testid="img-profile-avatar"
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-                    <User className="w-8 h-8 text-primary-foreground" />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground" data-testid="text-user-name">
-                    {user.firstName && user.lastName
-                      ? `${user.firstName} ${user.lastName}`
-                      : user.email}
-                  </h3>
-                  <p className="text-muted-foreground" data-testid="text-user-email">
-                    {user.email}
-                  </p>
-                  {user.isAdmin && (
-                    <Badge className="mt-2" data-testid="badge-admin">
-                      Administrator
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Member since: {format(new Date(user.createdAt!), "MMMM yyyy")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Total Orders: {orders.length}
-                </p>
-              </div>
+      <Tabs defaultValue="orders" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="orders" data-testid="tab-orders">Orders</TabsTrigger>
+          <TabsTrigger value="support" data-testid="tab-support">Support</TabsTrigger>
+          <TabsTrigger value="profile" data-testid="tab-profile">Profile</TabsTrigger>
+        </TabsList>
 
-              {user.isAdmin && (
-                <>
-                  <Separator />
-                  <Button
-                    className="w-full"
-                    onClick={() => window.location.href = '/admin'}
-                    data-testid="button-admin-dashboard"
-                  >
-                    Admin Dashboard
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Order History */}
-        <div className="lg:col-span-2">
+        <TabsContent value="orders" className="space-y-6">
           <Card data-testid="card-order-history">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -274,8 +213,117 @@ export default function Profile() {
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="support" className="space-y-6">
+          <CustomerService orders={orders} />
+        </TabsContent>
+
+        <TabsContent value="profile" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card data-testid="card-profile-info">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Account Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  {user.profileImageUrl ? (
+                    <img
+                      src={user.profileImageUrl}
+                      alt="Profile"
+                      className="w-16 h-16 rounded-full object-cover"
+                      data-testid="img-profile-avatar"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+                      <User className="w-8 h-8 text-primary-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground" data-testid="text-user-name">
+                      {user.firstName && user.lastName
+                        ? `${user.firstName} ${user.lastName}`
+                        : user.email}
+                    </h3>
+                    <p className="text-muted-foreground" data-testid="text-user-email">
+                      {user.email}
+                    </p>
+                    {user.isAdmin && (
+                      <Badge className="mt-2" data-testid="badge-admin">
+                        Administrator
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Member since: {format(new Date(user.createdAt!), "MMMM yyyy")}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Total Orders: {orders.length}
+                  </p>
+                </div>
+
+                {user.isAdmin && (
+                  <>
+                    <Separator />
+                    <Button
+                      className="w-full"
+                      onClick={() => window.location.href = '/admin'}
+                      data-testid="button-admin-dashboard"
+                    >
+                      Admin Dashboard
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-account-stats">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5" />
+                  Account Statistics
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userStats ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Total Orders:</span>
+                      <span className="font-semibold" data-testid="stat-total-orders">
+                        {userStats.totalOrders}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Total Spent:</span>
+                      <span className="font-semibold" data-testid="stat-total-spent">
+                        ${userStats.totalSpent}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Digital Keys:</span>
+                      <span className="font-semibold" data-testid="stat-total-keys">
+                        {userStats.totalKeys}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <div className="animate-spin w-6 h-6 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
