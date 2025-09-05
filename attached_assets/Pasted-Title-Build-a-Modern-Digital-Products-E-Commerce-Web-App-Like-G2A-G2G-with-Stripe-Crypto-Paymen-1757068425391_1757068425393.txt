@@ -1,0 +1,97 @@
+Title: Build a Modern Digital Products E‑Commerce Web App (Like G2A/G2G) with Stripe + Crypto Payments
+
+Description: Create a fully functional, production-ready e-commerce web application for selling digital products such as software licenses, activation keys, PC/console games, game cards, and gift cards. The platform should be modern, responsive, secure, and visually appealing, inspired by the design and user experience of G2A and G2G.
+
+Core Features
+Product Management
+
+Admin dashboard to add, edit, and delete products.
+
+Product categories (e.g., Software, Games, Gift Cards).
+
+Product detail pages with images, descriptions, price, and stock.
+
+Support for digital file/key delivery after purchase.
+
+Shopping Cart & Checkout
+
+Add/remove products from cart.
+
+Update quantities.
+
+Display total price and taxes (if applicable).
+
+Guest checkout + user account checkout.
+
+Payment Integrations
+
+Stripe for credit/debit card payments.
+
+Crypto payment gateway (e.g., Coinbase Commerce, BitPay, or NOWPayments).
+
+Secure payment processing with confirmation.
+
+User Accounts
+
+Sign up / login via email & password.
+
+Order history and downloadable products/keys.
+
+Profile management.
+
+Digital Delivery
+
+Automatic delivery of license keys or download links after payment confirmation.
+
+Email confirmation with purchase details.
+
+Security
+
+HTTPS, CSRF protection, input validation.
+
+Secure storage of keys (never exposed before purchase).
+
+Advanced Features
+
+Search and filter products.
+
+Ratings & reviews.
+
+Featured products and promotions.
+
+Multi-currency support.
+
+Mobile-first responsive design.
+
+Design Requirements
+Modern, clean, and professional UI similar to G2A/G2G.
+
+Dark/light mode toggle.
+
+Attractive product cards with hover effects.
+
+Smooth animations for cart and checkout.
+
+Technical Stack (Suggested)
+Frontend: React.js / Next.js with Tailwind CSS or Material UI.
+
+Backend: Node.js with Express or NestJS.
+
+Database: PostgreSQL or MongoDB.
+
+Authentication: JWT-based auth.
+
+Payments: Stripe API + chosen crypto payment API.
+
+Deployment: Dockerized, deployable to AWS / Vercel / Netlify.
+
+Deliverables
+Complete source code with clear folder structure.
+
+Installation & setup instructions.
+
+Admin and user documentation.
+
+Fully functional demo with test data.
+
+💡 Extra Note for AI Tool: Ensure the system is scalable for future features like affiliate programs, seller accounts, or API integrations. Prioritize security, performance, and user experience.
