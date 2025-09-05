@@ -17,7 +17,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProductSchema, insertCategorySchema, insertDigitalKeySchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { BarChart3, Package, ShoppingBag, Plus, Key } from "lucide-react";
+import { AdminCustomerService } from "@/components/AdminCustomerService";
+import { BarChart3, Package, ShoppingBag, Plus, Key, HelpCircle } from "lucide-react";
 import { z } from "zod";
 
 export default function AdminDashboard() {
@@ -60,6 +61,29 @@ export default function AdminDashboard() {
 
   const { data: categories = [] } = useQuery<any[]>({
     queryKey: ["/api/categories"],
+    enabled: !!isAuthenticated && !!user?.isAdmin,
+  });
+
+  const { data: customerServiceStats } = useQuery<any>({
+    queryKey: ["/api/support-tickets", "/api/refunds", "/api/disputes"],
+    queryFn: async () => {
+      const [ticketsResponse, refundsResponse, disputesResponse] = await Promise.all([
+        apiRequest("GET", "/api/support-tickets"),
+        apiRequest("GET", "/api/refunds"),
+        apiRequest("GET", "/api/disputes")
+      ]);
+      
+      const tickets = await ticketsResponse.json();
+      const refunds = await refundsResponse.json();
+      const disputes = await disputesResponse.json();
+      
+      return {
+        openTickets: tickets.filter((t: any) => t.status === 'open').length,
+        pendingRefunds: refunds.filter((r: any) => r.status === 'pending').length,
+        activeDisputes: disputes.filter((d: any) => d.status === 'open').length,
+        totalIssues: tickets.length + refunds.length + disputes.length
+      };
+    },
     enabled: !!isAuthenticated && !!user?.isAdmin,
   });
 
@@ -221,7 +245,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card data-testid="card-total-products">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -263,6 +287,23 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        <Card data-testid="card-customer-service">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-muted-foreground text-sm">Support Issues</p>
+                <p className="text-2xl font-bold text-foreground" data-testid="stat-support-issues">
+                  {customerServiceStats?.totalIssues || 0}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {customerServiceStats?.openTickets || 0} tickets • {customerServiceStats?.pendingRefunds || 0} refunds
+                </p>
+              </div>
+              <HelpCircle className="h-8 w-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Management Tabs */}
@@ -270,6 +311,7 @@ export default function AdminDashboard() {
         <TabsList>
           <TabsTrigger value="products" data-testid="tab-products">Products</TabsTrigger>
           <TabsTrigger value="categories" data-testid="tab-categories">Categories</TabsTrigger>
+          <TabsTrigger value="support" data-testid="tab-support">Customer Service</TabsTrigger>
         </TabsList>
 
         <TabsContent value="products" className="space-y-6">
@@ -536,6 +578,14 @@ export default function AdminDashboard() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="support" className="space-y-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-foreground mb-2">Customer Service</h2>
+            <p className="text-muted-foreground">Manage refunds, support tickets, disputes, and inventory alerts</p>
+          </div>
+          <AdminCustomerService />
         </TabsContent>
       </Tabs>
 

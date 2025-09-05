@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefundRequest } from "./RefundRequest";
 import { SupportTicket } from "./SupportTicket";
+import { OrderCancellation } from "./OrderCancellation";
 import { 
   DollarSign, 
   HelpCircle, 
@@ -26,6 +27,7 @@ interface CustomerServiceProps {
 export function CustomerService({ orders }: CustomerServiceProps) {
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [cancellationModalOpen, setCancellationModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithItems | undefined>();
 
   const { data: refunds = [] } = useQuery<any[]>({
@@ -41,6 +43,7 @@ export function CustomerService({ orders }: CustomerServiceProps) {
   });
 
   const completedOrders = orders.filter(order => order.status === 'completed');
+  const pendingOrders = orders.filter(order => order.status === 'pending' || order.status === 'processing');
 
   const openRefundRequest = (order: OrderWithItems) => {
     setSelectedOrder(order);
@@ -50,6 +53,11 @@ export function CustomerService({ orders }: CustomerServiceProps) {
   const openSupportTicket = (order?: OrderWithItems) => {
     setSelectedOrder(order);
     setSupportModalOpen(true);
+  };
+
+  const openOrderCancellation = (order: OrderWithItems) => {
+    setSelectedOrder(order);
+    setCancellationModalOpen(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -127,13 +135,19 @@ export function CustomerService({ orders }: CustomerServiceProps) {
               </span>
             </Button>
             
-            <div className="flex items-center justify-center p-4 border border-dashed border-border rounded-lg">
-              <div className="text-center">
-                <Package className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm font-medium">Order Issues</p>
-                <p className="text-xs text-muted-foreground">Report delivery problems</p>
-              </div>
-            </div>
+            <Button
+              onClick={() => openOrderCancellation(pendingOrders[0])}
+              className="flex items-center gap-2 h-auto p-4 flex-col"
+              variant="outline"
+              disabled={pendingOrders.length === 0}
+              data-testid="button-cancel-order"
+            >
+              <XCircle className="w-6 h-6" />
+              <span className="font-medium">Cancel Order</span>
+              <span className="text-xs text-muted-foreground">
+                {pendingOrders.length > 0 ? 'For pending orders' : 'No pending orders'}
+              </span>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -353,6 +367,17 @@ export function CustomerService({ orders }: CustomerServiceProps) {
         }}
         order={selectedOrder}
       />
+
+      {selectedOrder && (
+        <OrderCancellation
+          isOpen={cancellationModalOpen}
+          onClose={() => {
+            setCancellationModalOpen(false);
+            setSelectedOrder(undefined);
+          }}
+          order={selectedOrder}
+        />
+      )}
     </div>
   );
 }
