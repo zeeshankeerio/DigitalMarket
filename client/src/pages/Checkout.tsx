@@ -117,26 +117,33 @@ export default function Checkout() {
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState("stripe");
   const [clientSecret, setClientSecret] = useState("");
-  const [cartItems] = useState<CartItem[]>([
-    {
-      id: "1",
-      productId: "1",
-      name: "Cyberpunk 2077",
-      price: "29.99",
-      quantity: 1,
-      platform: "PC Game",
-      imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80"
-    },
-    {
-      id: "2", 
-      productId: "2",
-      name: "Windows 11 Pro",
-      price: "89.99",
-      quantity: 1,
-      platform: "Software License",
-      imageUrl: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80"
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isLoadingCart, setIsLoadingCart] = useState(true);
+  
+  // Load cart items from localStorage
+  useEffect(() => {
+    const savedCart = localStorage.getItem('digitalstore-cart');
+    const checkoutItems = localStorage.getItem('checkout-items');
+    
+    if (checkoutItems) {
+      try {
+        const items = JSON.parse(checkoutItems);
+        setCartItems(items);
+        // Clear checkout items after loading
+        localStorage.removeItem('checkout-items');
+      } catch (e) {
+        console.error('Failed to parse checkout items:', e);
+      }
+    } else if (savedCart) {
+      try {
+        setCartItems(JSON.parse(savedCart));
+      } catch (e) {
+        console.error('Failed to parse saved cart:', e);
+      }
     }
-  ]);
+    
+    setIsLoadingCart(false);
+  }, []);
 
   const subtotal = cartItems.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
   const processingFee = 2.99;
@@ -196,10 +203,13 @@ export default function Checkout() {
     }
   }, [isAuthenticated, cartItems, total, toast]);
 
-  if (isLoading) {
+  if (isLoading || isLoadingCart) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+        <span className="ml-3 text-muted-foreground">
+          {isLoading ? 'Loading...' : 'Loading cart...'}
+        </span>
       </div>
     );
   }

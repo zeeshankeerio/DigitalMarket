@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -6,12 +6,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Package, Download, CreditCard } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { 
+  User, 
+  Package, 
+  Download, 
+  CreditCard, 
+  Key, 
+  Copy, 
+  Eye, 
+  EyeOff,
+  Calendar,
+  CheckCircle,
+  Clock,
+  ShoppingBag
+} from "lucide-react";
 import { format } from "date-fns";
 
 export default function Profile() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const [revealedKeys, setRevealedKeys] = useState<{ [key: string]: boolean }>({});
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -30,8 +46,58 @@ export default function Profile() {
 
   const { data: orders = [], isLoading: ordersLoading } = useQuery<any[]>({
     queryKey: ["/api/orders"],
-    enabled: isAuthenticated,
+    enabled: !!isAuthenticated,
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error as Error)) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
+
+  const { data: userStats } = useQuery<{
+    totalOrders: number;
+    totalSpent: string;
+    totalKeys: number;
+  }>({
+    queryKey: ["/api/user-stats"],
+    enabled: !!isAuthenticated,
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error as Error)) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+  });
+
+  const copyToClipboard = (text: string, keyId: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Copied to Clipboard",
+        description: "Digital key copied successfully!",
+      });
+    });
+  };
+
+  const toggleKeyVisibility = (keyId: string) => {
+    setRevealedKeys(prev => ({
+      ...prev,
+      [keyId]: !prev[keyId]
+    }));
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'failed':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
 
   if (isLoading) {
     return (

@@ -21,7 +21,7 @@ import {
   type OrderWithItems,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, isNull } from "drizzle-orm";
+import { eq, desc, and, isNull, isNotNull, sql } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -53,6 +53,7 @@ export interface IStorage {
   getOrderById(id: string): Promise<OrderWithItems | undefined>;
   updateOrderStatus(id: string, status: string): Promise<Order>;
   getUserOrders(userId: string): Promise<OrderWithItems[]>;
+  getUserStats(userId: string): Promise<{ totalOrders: number; totalSpent: string; totalKeys: number }>;
   getOrderByPaymentIntent(paymentIntentId: string): Promise<Order | undefined>;
 }
 
@@ -260,6 +261,36 @@ export class DatabaseStorage implements IStorage {
     );
     
     return ordersWithItems;
+  }
+  
+  async getUserStats(userId: string): Promise<{ totalOrders: number; totalSpent: string; totalKeys: number }> {
+    // Get total orders count and total spent
+    const orderStats = await db
+      .select({
+        totalOrders: sql<number>`count(*)`,
+        totalSpent: sql<string>`coalesce(sum(cast(${orders.total} as decimal)), 0)`
+      })
+      .from(orders)
+      .where(eq(orders.userId, userId));
+    
+    // Get total digital keys count for the user
+    const keyStats = await db
+      .select({
+        totalKeys: sql<number>`count(${digitalKeys.id})`
+      })
+      .from(orderItems)
+      .leftJoin(orders, eq(orderItems.orderId, orders.id))
+      .leftJoin(digitalKeys, eq(orderItems.digitalKeyId, digitalKeys.id))
+      .where(and(
+        eq(orders.userId, userId),
+        isNotNull(digitalKeys.id)
+      ));
+    
+    return {
+      totalOrders: orderStats[0]?.totalOrders || 0,
+      totalSpent: parseFloat(orderStats[0]?.totalSpent || '0').toFixed(2),
+      totalKeys: keyStats[0]?.totalKeys || 0
+    };
   }
   
   async getOrderByPaymentIntent(paymentIntentId: string): Promise<Order | undefined> {

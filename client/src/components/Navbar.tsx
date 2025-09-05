@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/ThemeProvider";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ShoppingCart } from "./ShoppingCart";
 import { useQuery } from "@tanstack/react-query";
-import { Gamepad2, Search, Sun, Moon, ShoppingCart as CartIcon, Menu, User } from "lucide-react";
+import { Gamepad2, Search, Sun, Moon, ShoppingCart as CartIcon, Menu, User, Settings, LogOut } from "lucide-react";
 
 interface CartItem {
   id: string;
@@ -25,26 +25,33 @@ export function Navbar() {
   const { user, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: "1",
-      productId: "1",
-      name: "Cyberpunk 2077",
-      price: "29.99",
-      quantity: 1,
-      platform: "PC Game",
-      imageUrl: "https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80"
-    },
-    {
-      id: "2", 
-      productId: "2",
-      name: "Windows 11 Pro",
-      price: "89.99",
-      quantity: 1,
-      platform: "Software License",
-      imageUrl: "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80"
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  
+  // Load cart items from localStorage
+  useEffect(() => {
+    const savedCart = localStorage.getItem('digitalstore-cart');
+    if (savedCart) {
+      try {
+        setCartItems(JSON.parse(savedCart));
+      } catch (e) {
+        console.error('Failed to parse saved cart:', e);
+      }
     }
-  ]);
+    
+    // Listen for cart updates
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'digitalstore-cart' && e.newValue) {
+        try {
+          setCartItems(JSON.parse(e.newValue));
+        } catch (error) {
+          console.error('Failed to parse cart update:', error);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const { data: categories = [] } = useQuery<any[]>({
     queryKey: ["/api/categories"],
@@ -53,15 +60,17 @@ export function Navbar() {
   const cartItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const updateCartItem = (id: string, quantity: number) => {
-    setCartItems(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, quantity } : item
-      ).filter(item => item.quantity > 0)
-    );
+    const updatedItems = cartItems
+      .map(item => item.id === id ? { ...item, quantity } : item)
+      .filter(item => item.quantity > 0);
+    setCartItems(updatedItems);
+    localStorage.setItem('digitalstore-cart', JSON.stringify(updatedItems));
   };
 
   const removeCartItem = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+    const updatedItems = cartItems.filter(item => item.id !== id);
+    setCartItems(updatedItems);
+    localStorage.setItem('digitalstore-cart', JSON.stringify(updatedItems));
   };
 
   return (
