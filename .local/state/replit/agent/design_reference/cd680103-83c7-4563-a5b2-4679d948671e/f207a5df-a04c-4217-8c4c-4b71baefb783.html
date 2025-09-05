@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameStore - Digital Products Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    borderRadius: {
+                        lg: "var(--radius)",
+                        md: "calc(var(--radius) - 2px)",
+                        sm: "calc(var(--radius) - 4px)",
+                    },
+                    colors: {
+                        background: "var(--background)",
+                        foreground: "var(--foreground)",
+                        card: {
+                            DEFAULT: "var(--card)",
+                            foreground: "var(--card-foreground)",
+                        },
+                        popover: {
+                            DEFAULT: "var(--popover)",
+                            foreground: "var(--popover-foreground)",
+                        },
+                        primary: {
+                            DEFAULT: "var(--primary)",
+                            foreground: "var(--primary-foreground)",
+                        },
+                        secondary: {
+                            DEFAULT: "var(--secondary)",
+                            foreground: "var(--secondary-foreground)",
+                        },
+                        muted: {
+                            DEFAULT: "var(--muted)",
+                            foreground: "var(--muted-foreground)",
+                        },
+                        accent: {
+                            DEFAULT: "var(--accent)",
+                            foreground: "var(--accent-foreground)",
+                        },
+                        destructive: {
+                            DEFAULT: "var(--destructive)",
+                            foreground: "var(--destructive-foreground)",
+                        },
+                        border: "var(--border)",
+                        input: "var(--input)",
+                        ring: "var(--ring)",
+                    },
+                    fontFamily: {
+                        sans: ["var(--font-sans)"],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'bounce-subtle': 'bounceSubtle 0.6s ease-in-out',
+                    }
+                },
+            }
+        };
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --background: hsl(222 24% 8%);
+            --foreground: hsl(213 31% 91%);
+            --card: hsl(222 20% 11%);
+            --card-foreground: hsl(213 31% 91%);
+            --popover: hsl(222 20% 11%);
+            --popover-foreground: hsl(213 31% 91%);
+            --primary: hsl(217 91% 60%);
+            --primary-foreground: hsl(222 24% 8%);
+            --secondary: hsl(222 13% 16%);
+            --secondary-foreground: hsl(213 31% 91%);
+            --muted: hsl(222 13% 16%);
+            --muted-foreground: hsl(215 20% 65%);
+            --accent: hsl(142 76% 36%);
+            --accent-foreground: hsl(213 31% 91%);
+            --destructive: hsl(0 63% 31%);
+            --destructive-foreground: hsl(213 31% 91%);
+            --border: hsl(222 13% 16%);
+            --input: hsl(222 13% 16%);
+            --ring: hsl(217 91% 60%);
+            --radius: 0.75rem;
+            --font-sans: "Inter", system-ui, sans-serif;
+        }
+
+        .light {
+            --background: hsl(0 0% 98%);
+            --foreground: hsl(222 24% 8%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222 24% 8%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222 24% 8%);
+            --primary: hsl(217 91% 60%);
+            --primary-foreground: hsl(0 0% 98%);
+            --secondary: hsl(210 40% 96%);
+            --secondary-foreground: hsl(222 24% 8%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215 16% 47%);
+            --accent: hsl(142 76% 36%);
+            --accent-foreground: hsl(0 0% 98%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(0 0% 98%);
+            --border: hsl(214 32% 91%);
+            --input: hsl(214 32% 91%);
+            --ring: hsl(217 91% 60%);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        @keyframes bounceSubtle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .product-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .cart-item {
+            animation: slide-up 0.3s ease-out;
+        }
+
+        .loading-spinner {
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-left: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground font-sans">
+    <!-- @COMPONENT: Navigation -->
+    <nav class="sticky top-0 z-50 bg-card border-b border-border backdrop-blur-sm bg-opacity-95">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <i class="fas fa-gamepad text-primary-foreground"></i>
+                    </div>
+                    <span class="text-xl font-bold text-foreground">GameStore</span>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="hidden md:flex flex-1 max-w-md mx-8">
+                    <div class="relative w-full">
+                        <input type="text" placeholder="Search games, software, gift cards..." 
+                               class="w-full px-4 py-2 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                        <button class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <i class="fas fa-search text-muted-foreground"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation Items -->
+                <div class="flex items-center space-x-6">
+                    <!-- Dark Mode Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-lg hover:bg-muted transition-colors">
+                        <i class="fas fa-moon text-muted-foreground"></i>
+                    </button>
+
+                    <!-- Cart -->
+                    <button id="cart-toggle" class="relative p-2 rounded-lg hover:bg-muted transition-colors">
+                        <i class="fas fa-shopping-cart text-muted-foreground"></i>
+                        <span class="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                    </button>
+
+                    <!-- User Account -->
+                    <div class="hidden md:flex items-center space-x-2">
+                        <button class="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">Login</button>
+                        <button class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity">Sign Up</button>
+                    </div>
+
+                    <!-- Mobile Menu -->
+                    <button class="md:hidden p-2 rounded-lg hover:bg-muted transition-colors">
+                        <i class="fas fa-bars text-muted-foreground"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="hidden md:flex items-center space-x-8 mt-4 pt-4 border-t border-border">
+                <a href="#" class="text-primary font-medium">Featured</a>
+                <a href="#" class="text-muted-foreground hover:text-foreground transition-colors">PC Games</a>
+                <a href="#" class="text-muted-foreground hover:text-foreground transition-colors">Console Games</a>
+                <a href="#" class="text-muted-foreground hover:text-foreground transition-colors">Software</a>
+                <a href="#" class="text-muted-foreground hover:text-foreground transition-colors">Gift Cards</a>
+                <a href="#" class="text-muted-foreground hover:text-foreground transition-colors">DLC</a>
+            </div>
+        </div>
+    </nav>
+    <!-- @END_COMPONENT: Navigation -->
+
+    <!-- @COMPONENT: Hero Section -->
+    <section class="relative overflow-hidden">
+        <!-- Gaming-themed hero background with gradient overlay -->
+        <div class="absolute inset-0 bg-gradient-to-br from-primary/20 via-secondary to-accent/20"></div>
+        <div class="relative container mx-auto px-4 py-16">
+            <div class="text-center max-w-4xl mx-auto">
+                <h1 class="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    Digital Gaming Marketplace
+                </h1>
+                <p class="text-xl text-muted-foreground mb-8">
+                    Discover the best deals on PC games, software licenses, gift cards, and digital content
+                </p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <button class="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium">
+                        Browse Games
+                    </button>
+                    <button class="px-8 py-3 border border-border text-foreground rounded-lg hover:bg-muted transition-colors font-medium">
+                        View Deals
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: Hero Section -->
+
+    <!-- @COMPONENT: Featured Products -->
+    <section class="py-16">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-3xl font-bold text-foreground">Featured Products</h2>
+                <button class="text-primary hover:underline">View All</button>
+            </div>
+
+            <!-- @MAP: featuredProducts.map(product => ( -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Product Card 1 -->
+                <div class="product-card bg-card rounded-lg overflow-hidden border border-border">
+                    <!-- High-quality gaming image -->
+                    <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=225" 
+                         alt="Cyberpunk gaming scene" class="w-full h-48 object-cover" data-mock="true">
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 bg-accent text-accent-foreground text-xs rounded-full">PC Game</span>
+                            <div class="flex text-yellow-400">
+                                <i class="fas fa-star text-sm"></i>
+                                <span class="text-xs text-muted-foreground ml-1">4.8</span>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-card-foreground mb-2" data-bind="product.name">Cyberpunk 2077</h3>
+                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Open-world action-adventure game</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-muted-foreground line-through" data-bind="product.originalPrice">$59.99</span>
+                                <span class="text-lg font-bold text-accent" data-bind="product.price">$29.99</span>
+                            </div>
+                            <button class="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:opacity-90 transition-opacity"
+                                    data-event="click:addToCart" data-implementation="Should add product to cart with animation">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Card 2 -->
+                <div class="product-card bg-card rounded-lg overflow-hidden border border-border">
+                    <!-- Gaming hardware/software image -->
+                    <img src="https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=225" 
+                         alt="Modern gaming setup" class="w-full h-48 object-cover" data-mock="true">
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Software</span>
+                            <div class="flex text-yellow-400">
+                                <i class="fas fa-star text-sm"></i>
+                                <span class="text-xs text-muted-foreground ml-1">4.9</span>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-card-foreground mb-2" data-bind="product.name">Windows 11 Pro</h3>
+                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">Professional operating system license</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-accent" data-bind="product.price">$89.99</span>
+                            <button class="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:opacity-90 transition-opacity"
+                                    data-event="click:addToCart">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Card 3 -->
+                <div class="product-card bg-card rounded-lg overflow-hidden border border-border">
+                    <!-- Gaming accessories image -->
+                    <img src="https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=225" 
+                         alt="Gaming controller on dark surface" class="w-full h-48 object-cover" data-mock="true">
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 bg-orange-500 text-white text-xs rounded-full">Gift Card</span>
+                            <span class="px-2 py-1 bg-destructive text-destructive-foreground text-xs rounded-full font-medium">Hot Deal</span>
+                        </div>
+                        <h3 class="font-semibold text-card-foreground mb-2" data-bind="product.name">Steam Gift Card</h3>
+                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">$50 Steam Wallet Credit</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-muted-foreground line-through" data-bind="product.originalPrice">$50.00</span>
+                                <span class="text-lg font-bold text-accent" data-bind="product.price">$45.00</span>
+                            </div>
+                            <button class="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:opacity-90 transition-opacity"
+                                    data-event="click:addToCart">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Card 4 -->
+                <div class="product-card bg-card rounded-lg overflow-hidden border border-border">
+                    <!-- Console gaming image -->
+                    <img src="https://images.unsplash.com/photo-1556438064-2d7646166914?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=225" 
+                         alt="Console gaming setup" class="w-full h-48 object-cover" data-mock="true">
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 bg-accent text-accent-foreground text-xs rounded-full">Console</span>
+                            <div class="flex text-yellow-400">
+                                <i class="fas fa-star text-sm"></i>
+                                <span class="text-xs text-muted-foreground ml-1">4.7</span>
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-card-foreground mb-2" data-bind="product.name">FIFA 24</h3>
+                        <p class="text-muted-foreground text-sm mb-3" data-bind="product.description">PlayStation 5 Digital Download</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg font-bold text-accent" data-bind="product.price">$39.99</span>
+                            <button class="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:opacity-90 transition-opacity"
+                                    data-event="click:addToCart">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_MAP )) -->
+        </div>
+    </section>
+    <!-- @END_COMPONENT: Featured Products -->
+
+    <!-- @COMPONENT: Categories Section -->
+    <section class="py-16 bg-muted">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12 text-foreground">Browse Categories</h2>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="text-center group cursor-pointer">
+                    <div class="w-16 h-16 bg-primary rounded-lg mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-gamepad text-2xl text-primary-foreground"></i>
+                    </div>
+                    <h3 class="font-semibold text-foreground">PC Games</h3>
+                    <p class="text-sm text-muted-foreground">2,450+ titles</p>
+                </div>
+
+                <div class="text-center group cursor-pointer">
+                    <div class="w-16 h-16 bg-accent rounded-lg mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-desktop text-2xl text-accent-foreground"></i>
+                    </div>
+                    <h3 class="font-semibold text-foreground">Software</h3>
+                    <p class="text-sm text-muted-foreground">850+ programs</p>
+                </div>
+
+                <div class="text-center group cursor-pointer">
+                    <div class="w-16 h-16 bg-orange-500 rounded-lg mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-gift text-2xl text-white"></i>
+                    </div>
+                    <h3 class="font-semibold text-foreground">Gift Cards</h3>
+                    <p class="text-sm text-muted-foreground">50+ brands</p>
+                </div>
+
+                <div class="text-center group cursor-pointer">
+                    <div class="w-16 h-16 bg-purple-500 rounded-lg mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fas fa-puzzle-piece text-2xl text-white"></i>
+                    </div>
+                    <h3 class="font-semibold text-foreground">DLC & Addons</h3>
+                    <p class="text-sm text-muted-foreground">1,200+ items</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: Categories Section -->
+
+    <!-- @COMPONENT: Shopping Cart Sidebar -->
+    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-96 bg-card border-l border-border shadow-2xl z-50 transform translate-x-full transition-transform duration-300">
+        <div class="p-6 border-b border-border">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-bold text-card-foreground">Shopping Cart</h3>
+                <button id="close-cart" class="p-2 hover:bg-muted rounded-lg transition-colors">
+                    <i class="fas fa-times text-muted-foreground"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Cart Items -->
+            <div class="space-y-4">
+                <!-- Cart Item 1 -->
+                <div class="cart-item flex items-center space-x-4 p-4 bg-muted rounded-lg">
+                    <!-- Product thumbnail for visual reference -->
+                    <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" 
+                         alt="Cyberpunk 2077" class="w-16 h-16 rounded-lg object-cover" data-mock="true">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-card-foreground" data-bind="cartItem.name">Cyberpunk 2077</h4>
+                        <p class="text-sm text-muted-foreground" data-bind="cartItem.platform">PC Game</p>
+                        <div class="flex items-center mt-2">
+                            <button class="w-8 h-8 flex items-center justify-center bg-secondary rounded-lg text-secondary-foreground">-</button>
+                            <span class="mx-3 font-medium" data-bind="cartItem.quantity">1</span>
+                            <button class="w-8 h-8 flex items-center justify-center bg-secondary rounded-lg text-secondary-foreground">+</button>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-accent" data-bind="cartItem.price">$29.99</p>
+                        <button class="text-destructive hover:underline text-sm mt-1">Remove</button>
+                    </div>
+                </div>
+
+                <!-- Cart Item 2 -->
+                <div class="cart-item flex items-center space-x-4 p-4 bg-muted rounded-lg">
+                    <!-- Software icon placeholder -->
+                    <img src="https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" 
+                         alt="Windows 11 Pro" class="w-16 h-16 rounded-lg object-cover" data-mock="true">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-card-foreground" data-bind="cartItem.name">Windows 11 Pro</h4>
+                        <p class="text-sm text-muted-foreground" data-bind="cartItem.platform">Software License</p>
+                        <div class="flex items-center mt-2">
+                            <button class="w-8 h-8 flex items-center justify-center bg-secondary rounded-lg text-secondary-foreground">-</button>
+                            <span class="mx-3 font-medium" data-bind="cartItem.quantity">1</span>
+                            <button class="w-8 h-8 flex items-center justify-center bg-secondary rounded-lg text-secondary-foreground">+</button>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-accent" data-bind="cartItem.price">$89.99</p>
+                        <button class="text-destructive hover:underline text-sm mt-1">Remove</button>
+                    </div>
+                </div>
+
+                <!-- Cart Item 3 -->
+                <div class="cart-item flex items-center space-x-4 p-4 bg-muted rounded-lg">
+                    <!-- Gift card image -->
+                    <img src="https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" 
+                         alt="Steam Gift Card" class="w-16 h-16 rounded-lg object-cover" data-mock="true">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-card-foreground" data-bind="cartItem.name">Steam Gift Card</h4>
+                        <p class="text-sm text-muted-foreground" data-bind="cartItem.platform">$50 Credit</p>
+                        <div class="flex items-center mt-2">
+                            <button class="w-8 h-8 flex items-center justify-center bg-secondary rounded-lg text-secondary-foreground">-</button>
+                            <span class="mx-3 font-medium" data-bind="cartItem.quantity">1</span>
+                            <button class="w-8 h-8 flex items-center justify-center bg-secondary rounded-lg text-secondary-foreground">+</button>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-accent" data-bind="cartItem.price">$45.00</p>
+                        <button class="text-destructive hover:underline text-sm mt-1">Remove</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Footer -->
+        <div class="p-6 border-t border-border">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-lg font-medium text-card-foreground">Total:</span>
+                <span class="text-2xl font-bold text-accent" data-bind="cart.total">$164.98</span>
+            </div>
+            <button class="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
+                    data-event="click:proceedToCheckout" data-implementation="Should redirect to checkout page with cart items">
+                Proceed to Checkout
+            </button>
+            <p class="text-xs text-muted-foreground text-center mt-2">
+                Secure checkout with Stripe & crypto payments
+            </p>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: Shopping Cart Sidebar -->
+
+    <!-- @COMPONENT: Checkout Modal -->
+    <div id="checkout-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-card rounded-lg shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-border">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-card-foreground">Checkout</h3>
+                    <button id="close-checkout" class="p-2 hover:bg-muted rounded-lg transition-colors">
+                        <i class="fas fa-times text-muted-foreground"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <!-- Payment Methods -->
+                <div class="mb-6">
+                    <h4 class="text-lg font-medium text-card-foreground mb-4">Payment Method</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="flex items-center p-4 border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors">
+                            <input type="radio" name="payment" value="stripe" class="mr-3" checked>
+                            <div class="flex items-center">
+                                <i class="fab fa-cc-stripe text-2xl text-blue-500 mr-2"></i>
+                                <span class="font-medium text-card-foreground">Credit Card</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center p-4 border border-border rounded-lg cursor-pointer hover:bg-muted transition-colors">
+                            <input type="radio" name="payment" value="crypto" class="mr-3">
+                            <div class="flex items-center">
+                                <i class="fab fa-bitcoin text-2xl text-orange-500 mr-2"></i>
+                                <span class="font-medium text-card-foreground">Cryptocurrency</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Stripe Payment Form -->
+                <div id="stripe-form" class="payment-form">
+                    <h4 class="text-lg font-medium text-card-foreground mb-4">Card Information</h4>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-card-foreground mb-2">Card Number</label>
+                            <input type="text" placeholder="1234 5678 9012 3456" 
+                                   class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-card-foreground mb-2">Expiry Date</label>
+                                <input type="text" placeholder="MM/YY" 
+                                       class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-card-foreground mb-2">CVC</label>
+                                <input type="text" placeholder="123" 
+                                       class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crypto Payment Form -->
+                <div id="crypto-form" class="payment-form hidden">
+                    <h4 class="text-lg font-medium text-card-foreground mb-4">Cryptocurrency Payment</h4>
+                    <div class="text-center p-8 border border-border rounded-lg">
+                        <i class="fab fa-bitcoin text-4xl text-orange-500 mb-4"></i>
+                        <p class="text-muted-foreground mb-4">Select your preferred cryptocurrency:</p>
+                        <div class="grid grid-cols-3 gap-4">
+                            <button class="p-3 border border-border rounded-lg hover:bg-muted transition-colors">
+                                <i class="fab fa-bitcoin text-orange-500 mb-2"></i>
+                                <div class="text-sm font-medium">Bitcoin</div>
+                            </button>
+                            <button class="p-3 border border-border rounded-lg hover:bg-muted transition-colors">
+                                <i class="fab fa-ethereum text-blue-500 mb-2"></i>
+                                <div class="text-sm font-medium">Ethereum</div>
+                            </button>
+                            <button class="p-3 border border-border rounded-lg hover:bg-muted transition-colors">
+                                <i class="fas fa-coins text-yellow-500 mb-2"></i>
+                                <div class="text-sm font-medium">USDC</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="mt-8 p-4 bg-muted rounded-lg">
+                    <h4 class="text-lg font-medium text-card-foreground mb-4">Order Summary</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-muted-foreground">Subtotal:</span>
+                            <span class="font-medium" data-bind="order.subtotal">$164.98</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-muted-foreground">Processing Fee:</span>
+                            <span class="font-medium" data-bind="order.processingFee">$2.99</span>
+                        </div>
+                        <div class="border-t border-border pt-2 mt-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-medium text-card-foreground">Total:</span>
+                                <span class="text-xl font-bold text-accent" data-bind="order.total">$167.97</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Place Order Button -->
+                <button class="w-full mt-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center justify-center"
+                        data-event="click:processPayment" data-implementation="Should process payment and redirect to success page">
+                    <span id="payment-text">Complete Purchase</span>
+                    <div id="payment-loading" class="hidden loading-spinner w-5 h-5 ml-2"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: Checkout Modal -->
+
+    <!-- @COMPONENT: User Account Modal -->
+    <div id="account-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-card rounded-lg shadow-2xl max-w-md w-full mx-4">
+            <div class="p-6 border-b border-border">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-bold text-card-foreground">Account</h3>
+                    <button id="close-account" class="p-2 hover:bg-muted rounded-lg transition-colors">
+                        <i class="fas fa-times text-muted-foreground"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <div class="w-20 h-20 bg-primary rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <i class="fas fa-user text-2xl text-primary-foreground"></i>
+                    </div>
+                    <h4 class="text-lg font-medium text-card-foreground">Welcome Back!</h4>
+                    <p class="text-muted-foreground">Access your digital library and orders</p>
+                </div>
+
+                <!-- Login/Register Tabs -->
+                <div class="flex border border-border rounded-lg mb-6">
+                    <button id="login-tab" class="flex-1 py-2 px-4 text-center bg-primary text-primary-foreground rounded-l-lg font-medium">
+                        Login
+                    </button>
+                    <button id="register-tab" class="flex-1 py-2 px-4 text-center text-muted-foreground rounded-r-lg font-medium hover:bg-muted transition-colors">
+                        Register
+                    </button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="login-form" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-card-foreground mb-2">Email</label>
+                        <input type="email" placeholder="your@email.com" 
+                               class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-card-foreground mb-2">Password</label>
+                        <input type="password" placeholder="Enter your password" 
+                               class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
+                            data-event="submit:handleLogin" data-implementation="Should authenticate user and store session">
+                        Sign In
+                    </button>
+                    <p class="text-center text-sm text-muted-foreground">
+                        <a href="#" class="text-primary hover:underline">Forgot password?</a>
+                    </p>
+                </form>
+
+                <!-- Register Form -->
+                <form id="register-form" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-card-foreground mb-2">Email</label>
+                        <input type="email" placeholder="your@email.com" 
+                               class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-card-foreground mb-2">Password</label>
+                        <input type="password" placeholder="Create a password" 
+                               class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-card-foreground mb-2">Confirm Password</label>
+                        <input type="password" placeholder="Confirm your password" 
+                               class="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
+                            data-event="submit:handleRegister" data-implementation="Should create user account and authenticate">
+                        Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: User Account Modal -->
+
+    <!-- @COMPONENT: Admin Dashboard Preview -->
+    <section class="py-16 bg-muted">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12 text-foreground">Admin Dashboard Preview</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Stats Cards -->
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-muted-foreground text-sm">Total Sales</p>
+                            <p class="text-2xl font-bold text-accent" data-bind="stats.totalSales">$12,456</p>
+                        </div>
+                        <i class="fas fa-chart-line text-2xl text-accent"></i>
+                    </div>
+                </div>
+
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-muted-foreground text-sm">Orders Today</p>
+                            <p class="text-2xl font-bold text-primary" data-bind="stats.ordersToday">143</p>
+                        </div>
+                        <i class="fas fa-shopping-bag text-2xl text-primary"></i>
+                    </div>
+                </div>
+
+                <div class="bg-card p-6 rounded-lg border border-border">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-muted-foreground text-sm">Active Products</p>
+                            <p class="text-2xl font-bold text-secondary-foreground" data-bind="stats.activeProducts">2,847</p>
+                        </div>
+                        <i class="fas fa-box text-2xl text-muted-foreground"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mt-8 flex flex-wrap justify-center gap-4">
+                <button class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium">
+                    <i class="fas fa-plus mr-2"></i>Add Product
+                </button>
+                <button class="px-6 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium">
+                    <i class="fas fa-list mr-2"></i>View Orders
+                </button>
+                <button class="px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:opacity-90 transition-opacity font-medium">
+                    <i class="fas fa-chart-bar mr-2"></i>Analytics
+                </button>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: Admin Dashboard Preview -->
+
+    <!-- @COMPONENT: Footer -->
+    <footer class="bg-card border-t border-border py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <!-- Brand -->
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-gamepad text-primary-foreground"></i>
+                        </div>
+                        <span class="text-xl font-bold text-card-foreground">GameStore</span>
+                    </div>
+                    <p class="text-muted-foreground text-sm mb-4">
+                        Your trusted marketplace for digital games, software, and gift cards.
+                    </p>
+                    <div class="flex space-x-4">
+                        <i class="fab fa-twitter text-muted-foreground hover:text-primary cursor-pointer"></i>
+                        <i class="fab fa-discord text-muted-foreground hover:text-primary cursor-pointer"></i>
+                        <i class="fab fa-reddit text-muted-foreground hover:text-primary cursor-pointer"></i>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="font-semibold text-card-foreground mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="text-muted-foreground hover:text-card-foreground">Browse Games</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-card-foreground">Software</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-card-foreground">Gift Cards</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-card-foreground">Support</a></li>
+                    </ul>
+                </div>
+
+                <!-- Payment Methods -->
+                <div>
+                    <h4 class="font-semibold text-card-foreground mb-4">Payment Methods</h4>
+                    <div class="flex flex-wrap gap-2 text-2xl">
+                        <i class="fab fa-cc-visa text-blue-600"></i>
+                        <i class="fab fa-cc-mastercard text-red-600"></i>
+                        <i class="fab fa-cc-paypal text-blue-500"></i>
+                        <i class="fab fa-bitcoin text-orange-500"></i>
+                        <i class="fab fa-ethereum text-blue-400"></i>
+                    </div>
+                </div>
+
+                <!-- Security -->
+                <div>
+                    <h4 class="font-semibold text-card-foreground mb-4">Security</h4>
+                    <div class="flex items-center space-x-2 mb-2">
+                        <i class="fas fa-shield-alt text-accent"></i>
+                        <span class="text-sm text-muted-foreground">SSL Secured</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-lock text-accent"></i>
+                        <span class="text-sm text-muted-foreground">Encrypted Payments</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
+                <p>&copy; 2024 GameStore. All rights reserved. | Privacy Policy | Terms of Service</p>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <script>
+        (function() {
+            // Theme Toggle
+            const themeToggle = document.getElementById('theme-toggle');
+            const html = document.documentElement;
+            
+            // Check for saved theme preference or default to system preference
+            const savedTheme = localStorage.getItem('theme');
+            const systemTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            const currentTheme = savedTheme || systemTheme;
+            
+            html.classList.toggle('light', currentTheme === 'light');
+            updateThemeIcon(currentTheme);
+            
+            themeToggle.addEventListener('click', function() {
+                const isLight = html.classList.contains('light');
+                const newTheme = isLight ? 'dark' : 'light';
+                
+                html.classList.toggle('light');
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+            
+            function updateThemeIcon(theme) {
+                const icon = themeToggle.querySelector('i');
+                icon.className = theme === 'light' ? 'fas fa-sun text-muted-foreground' : 'fas fa-moon text-muted-foreground';
+            }
+            
+            // Cart Sidebar
+            const cartToggle = document.getElementById('cart-toggle');
+            const cartSidebar = document.getElementById('cart-sidebar');
+            const closeCart = document.getElementById('close-cart');
+            
+            cartToggle.addEventListener('click', function() {
+                cartSidebar.classList.remove('translate-x-full');
+                document.body.classList.add('overflow-hidden');
+            });
+            
+            closeCart.addEventListener('click', function() {
+                cartSidebar.classList.add('translate-x-full');
+                document.body.classList.remove('overflow-hidden');
+            });
+            
+            // Checkout Modal
+            const checkoutModal = document.getElementById('checkout-modal');
+            const closeCheckout = document.getElementById('close-checkout');
+            const proceedToCheckoutBtn = document.querySelector('[data-event="click:proceedToCheckout"]');
+            
+            if (proceedToCheckoutBtn) {
+                proceedToCheckoutBtn.addEventListener('click', function() {
+                    checkoutModal.classList.remove('hidden');
+                    cartSidebar.classList.add('translate-x-full');
+                    document.body.classList.add('overflow-hidden');
+                });
+            }
+            
+            closeCheckout.addEventListener('click', function() {
+                checkoutModal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            });
+            
+            // Payment Method Toggle
+            const paymentRadios = document.querySelectorAll('input[name="payment"]');
+            const stripeForm = document.getElementById('stripe-form');
+            const cryptoForm = document.getElementById('crypto-form');
+            
+            paymentRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'stripe') {
+                        stripeForm.classList.remove('hidden');
+                        cryptoForm.classList.add('hidden');
+                    } else {
+                        stripeForm.classList.add('hidden');
+                        cryptoForm.classList.remove('hidden');
+                    }
+                });
+            });
+            
+            // Account Modal (placeholder for login/register)
+            const accountModal = document.getElementById('account-modal');
+            const closeAccount = document.getElementById('close-account');
+            const loginTab = document.getElementById('login-tab');
+            const registerTab = document.getElementById('register-tab');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            
+            // TODO: Add event listeners for login/register buttons when they exist
+            
+            loginTab.addEventListener('click', function() {
+                loginTab.classList.add('bg-primary', 'text-primary-foreground');
+                loginTab.classList.remove('text-muted-foreground');
+                registerTab.classList.remove('bg-primary', 'text-primary-foreground');
+                registerTab.classList.add('text-muted-foreground');
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            });
+            
+            registerTab.addEventListener('click', function() {
+                registerTab.classList.add('bg-primary', 'text-primary-foreground');
+                registerTab.classList.remove('text-muted-foreground');
+                loginTab.classList.remove('bg-primary', 'text-primary-foreground');
+                loginTab.classList.add('text-muted-foreground');
+                registerForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            });
+            
+            closeAccount.addEventListener('click', function() {
+                accountModal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            });
+            
+            // Add to Cart Animation (placeholder)
+            const addToCartButtons = document.querySelectorAll('[data-event="click:addToCart"]');
+            addToCartButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // TODO: Implement actual add to cart functionality
+                    this.classList.add('animate-bounce-subtle');
+                    this.textContent = 'Added!';
+                    
+                    setTimeout(() => {
+                        this.classList.remove('animate-bounce-subtle');
+                        this.textContent = 'Add to Cart';
+                    }, 1500);
+                });
+            });
+            
+            // Payment Processing Simulation
+            const processPaymentBtn = document.querySelector('[data-event="click:processPayment"]');
+            if (processPaymentBtn) {
+                processPaymentBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const paymentText = document.getElementById('payment-text');
+                    const paymentLoading = document.getElementById('payment-loading');
+                    
+                    this.disabled = true;
+                    paymentText.textContent = 'Processing...';
+                    paymentLoading.classList.remove('hidden');
+                    
+                    // Simulate payment processing
+                    setTimeout(() => {
+                        // TODO: Implement actual payment processing
+                        alert('Payment successful! Check your email for download instructions.');
+                        checkoutModal.classList.add('hidden');
+                        document.body.classList.remove('overflow-hidden');
+                        
+                        // Reset button state
+                        this.disabled = false;
+                        paymentText.textContent = 'Complete Purchase';
+                        paymentLoading.classList.add('hidden');
+                    }, 3000);
+                });
+            }
+            
+            // Close modals when clicking outside
+            window.addEventListener('click', function(e) {
+                if (e.target === checkoutModal) {
+                    checkoutModal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+                if (e.target === accountModal) {
+                    accountModal.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
+                }
+            });
+            
+            // TODO: Implement business logic, API calls, or state management for:
+            // - User authentication and session management
+            // - Product catalog and search functionality
+            // - Real cart state management
+            // - Stripe and crypto payment integration
+            // - Digital product delivery system
+            // - Admin dashboard functionality
+            // - Order history and user profile management
+            
+        })();
+    </script>
+</body>
+</html>
